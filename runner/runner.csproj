@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- This app compiles and runs arbitrary user C#, so any BCL member the
+         user's code touches must survive. Trimming only preserves what a
+         static call-graph analysis can see, which is nothing here (the user
+         assembly is loaded and invoked purely via reflection). -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+  </ItemGroup>
+
+  <!-- Stage the full set of .NET reference assemblies as a single zip file
+       under wwwroot/refs.zip, fetched once at runtime (via ZipArchive, which
+       — unlike System.Formats.Tar — is supported in the browser) and used as
+       Roslyn compilation references. Not committed to git (see .gitignore) —
+       regenerated from the local SDK's Microsoft.NETCore.App.Ref pack on
+       every build, so it always matches the targeted runtime exactly. -->
+  <Target Name="StageReferenceAssemblies" BeforeTargets="Build;Publish" Inputs="$(NetCoreTargetingPackRoot)" Outputs="wwwroot/refs.zip">
+    <ItemGroup>
+      <_RefAsm Include="$(NetCoreTargetingPackRoot)/Microsoft.NETCore.App.Ref/*/ref/$(TargetFramework)/*.dll" />
+    </ItemGroup>
+    <Error Condition="'@(_RefAsm)' == ''" Text="No reference assemblies found under $(NetCoreTargetingPackRoot)/Microsoft.NETCore.App.Ref." />
+    <MakeDir Directories="$(IntermediateOutputPath)refstage" Condition="!Exists('$(IntermediateOutputPath)refstage')" />
+    <Copy SourceFiles="@(_RefAsm)" DestinationFolder="$(IntermediateOutputPath)refstage" SkipUnchangedFiles="true" />
+    <Delete Files="wwwroot/refs.zip" Condition="Exists('wwwroot/refs.zip')" />
+    <Exec Command="cd &quot;$(IntermediateOutputPath)refstage&quot; &amp;&amp; zip -q -X -r &quot;$(MSBuildProjectDirectory)/wwwroot/refs.zip&quot; ." />
+  </Target>
+
+</Project>

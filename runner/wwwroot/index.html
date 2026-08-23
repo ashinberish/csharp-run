@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>csharp-run runner (standalone test harness)</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <p>This page exists only to smoke-test the runner in isolation during development.
+     The real app (frontend/) loads this WASM module directly instead of using this page.
+     Open the console and call <code>window.__runCSharp({ languageVersion, files })</code>
+     from a real user gesture (e.g. a button click) — calling it via devtools/automation
+     injection for a *second* time can hang the single-threaded WASM interpreter; a normal
+     page's own event handlers don't have this problem.</p>
+  <pre id="out"></pre>
+</body>
+</html>
