@@ -34,16 +34,55 @@ export interface RunResponse {
   runtimeError?: string;
 }
 
+export interface IntelliSenseRequest {
+  languageVersion: string;
+  files: SourceFileInput[];
+  activeFile: string;
+  position: number;
+}
+
+export interface CompletionItemInfo {
+  label: string;
+  kind: string;
+  detail?: string;
+}
+
+export interface CompletionResponse {
+  items: CompletionItemInfo[];
+}
+
+export interface HoverResponse {
+  text?: string;
+}
+
+export interface SignatureInfo {
+  label: string;
+  parameters: string[];
+}
+
+export interface SignatureHelpResponse {
+  signatures: SignatureInfo[];
+  activeParameter: number;
+}
+
 interface CSharpRunnerExports {
   CsharpRun: {
     CSharpRunner: {
       Run(requestJson: string): Promise<string>;
+    };
+    CSharpIntelliSense: {
+      GetCompletions(requestJson: string): Promise<string>;
+      GetHover(requestJson: string): Promise<string>;
+      GetSignatureHelp(requestJson: string): Promise<string>;
     };
   };
 }
 
 export interface Runner {
   run(request: RunRequest): Promise<RunResponse>;
+  getCompletions(request: IntelliSenseRequest): Promise<CompletionResponse>;
+  getHover(request: IntelliSenseRequest): Promise<HoverResponse>;
+  getSignatureHelp(request: IntelliSenseRequest): Promise<SignatureHelpResponse>;
 }
 
 declare global {
@@ -98,13 +137,29 @@ function initRunner(): Promise<Runner> {
   });
 }
 
+function getExports(): CSharpRunnerExports {
+  const exports = window.__csharpRunnerExports;
+  if (!exports) throw new Error("Runner not initialized.");
+  return exports;
+}
+
 function makeRunner(): Runner {
   return {
     async run(request: RunRequest) {
-      const exports = window.__csharpRunnerExports;
-      if (!exports) throw new Error("Runner not initialized.");
-      const json = await exports.CsharpRun.CSharpRunner.Run(JSON.stringify(request));
+      const json = await getExports().CsharpRun.CSharpRunner.Run(JSON.stringify(request));
       return JSON.parse(json) as RunResponse;
+    },
+    async getCompletions(request: IntelliSenseRequest) {
+      const json = await getExports().CsharpRun.CSharpIntelliSense.GetCompletions(JSON.stringify(request));
+      return JSON.parse(json) as CompletionResponse;
+    },
+    async getHover(request: IntelliSenseRequest) {
+      const json = await getExports().CsharpRun.CSharpIntelliSense.GetHover(JSON.stringify(request));
+      return JSON.parse(json) as HoverResponse;
+    },
+    async getSignatureHelp(request: IntelliSenseRequest) {
+      const json = await getExports().CsharpRun.CSharpIntelliSense.GetSignatureHelp(JSON.stringify(request));
+      return JSON.parse(json) as SignatureHelpResponse;
     },
   };
 }

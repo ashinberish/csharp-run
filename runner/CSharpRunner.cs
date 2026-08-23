@@ -67,25 +67,7 @@ public static partial class CSharpRunner
             ?? throw new ArgumentException("Invalid request payload.");
 
         var references = await GetReferencesAsync();
-        var languageVersion = ParseLanguageVersion(request.LanguageVersion);
-        var parseOptions = new CSharpParseOptions(languageVersion);
-
-        var csFiles = request.Files.Where(f => f.Name.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)).ToList();
-        var trees = csFiles
-            .Select(f => CSharpSyntaxTree.ParseText(f.Content, parseOptions, path: f.Name, encoding: System.Text.Encoding.UTF8))
-            .ToList();
-        // Matches `dotnet new console`'s <ImplicitUsings>enable</ImplicitUsings>
-        // default so beginner-friendly programs don't need `using System;`.
-        trees.Add(CSharpSyntaxTree.ParseText(ImplicitGlobalUsings, parseOptions, path: ImplicitUsingsPath));
-
-        var compilation = CSharpCompilation.Create(
-            "UserProgram",
-            trees,
-            references,
-            new CSharpCompilationOptions(
-                OutputKind.ConsoleApplication,
-                concurrentBuild: false,
-                optimizationLevel: OptimizationLevel.Debug));
+        var compilation = BuildCompilation(request.Files, request.LanguageVersion, references, out _);
 
         using var peStream = new MemoryStream();
         var emitResult = compilation.Emit(peStream);
@@ -167,9 +149,46 @@ public static partial class CSharpRunner
     private static LanguageVersion ParseLanguageVersion(string? value) =>
         Enum.TryParse<LanguageVersion>(value, ignoreCase: true, out var parsed) ? parsed : LanguageVersion.Latest;
 
-    // The reference-assembly tarball is fetched once and cached for the
-    // lifetime of the runtime; concurrent Run calls share the same fetch.
-    private static Task<MetadataReference[]> GetReferencesAsync()
+    /// <summary>
+    /// Parses every .cs file into a SyntaxTree and compiles them together.
+    /// Shared by Run and the IntelliSense endpoints (CSharpIntelliSense.cs)
+    /// so completion/hover/signature-help see exactly the same semantics
+    /// Run would. Not cached across calls: each request re-parses/re-binds
+    /// from the current editor contents, since IntelliSense needs the
+    /// in-progress (possibly uncompilable) text, not the last-Run snapshot.
+    /// </summary>
+    internal static CSharpCompilation BuildCompilation(
+        List<SourceFile> files,
+        string? languageVersionName,
+        MetadataReference[] references,
+        out Dictionary<string, SyntaxTree> treesByFile)
+    {
+        var languageVersion = ParseLanguageVersion(languageVersionName);
+        var parseOptions = new CSharpParseOptions(languageVersion);
+
+        var csFiles = files.Where(f => f.Name.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)).ToList();
+        treesByFile = csFiles.ToDictionary(
+            f => f.Name,
+            f => CSharpSyntaxTree.ParseText(f.Content, parseOptions, path: f.Name, encoding: System.Text.Encoding.UTF8));
+
+        var trees = treesByFile.Values.ToList();
+        // Matches `dotnet new console`'s <ImplicitUsings>enable</ImplicitUsings>
+        // default so beginner-friendly programs don't need `using System;`.
+        trees.Add(CSharpSyntaxTree.ParseText(ImplicitGlobalUsings, parseOptions, path: ImplicitUsingsPath));
+
+        return CSharpCompilation.Create(
+            "UserProgram",
+            trees,
+            references,
+            new CSharpCompilationOptions(
+                OutputKind.ConsoleApplication,
+                concurrentBuild: false,
+                optimizationLevel: OptimizationLevel.Debug));
+    }
+
+    // The reference-assembly zip is fetched once and cached for the
+    // lifetime of the runtime; concurrent calls share the same fetch.
+    internal static Task<MetadataReference[]> GetReferencesAsync()
     {
         if (_references is not null) return Task.FromResult(_references);
         return _referencesTask ??= LoadReferencesAsync();

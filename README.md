@@ -22,6 +22,10 @@ Everything executes client-side. Your code never leaves the browser.
   itself enforces.
 - **Selectable C# language version** — C# 10 through Preview, from Settings. Unlike py-run's
   Python version picker this is a compiler flag, not a different runtime — no reload needed.
+- **IntelliSense** — completion, hover, and signature help, built on Roslyn's compiler API
+  (`SemanticModel`/`LookupSymbols`) rather than the full IDE completion engine — see
+  [How it works](#how-it-works) for why. Cross-file (a class in another open `.cs` file shows up
+  in completion without needing to have been run first). Toggle in Settings, off by default.
 - **Dark / light theme**, synced with Monaco's own editor theme.
 - **Auto-saved session** — every file's content, plus which one was open, is saved to
   `localStorage` as you type and restored the next time you open the app.
@@ -85,6 +89,15 @@ automatically.
   instead of a CDN.
 - `frontend/src/lib/session.ts` owns the multi-file session model and `localStorage`
   persistence.
+- `runner/CSharpIntelliSense.cs` implements completion/hover/signature-help directly on
+  `SyntaxTree`/`SemanticModel`/`SemanticModel.LookupSymbols` rather than
+  `Microsoft.CodeAnalysis.Features`' `CompletionService`/`QuickInfoService` — the latter needs an
+  `AdhocWorkspace` with MEF-composed providers, and a single `GetCompletionsAsync` call through
+  that stack measured in the multiple *minutes* under the Mono WASM interpreter (enabling WASM
+  AOT to speed it up didn't even finish publishing in 10). `LookupSymbols` is the same primitive
+  a full completion engine is built on, just without fuzzy matching, snippets, or import
+  suggestions — real, accurate, scope-aware completion in well under a second instead.
+  `frontend/src/lib/intellisense.ts` registers the corresponding Monaco providers.
 
 ## License
 

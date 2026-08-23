@@ -21,6 +21,7 @@ import {
   type Theme,
 } from "@/lib/session";
 import { loadRunner, type RunResponse } from "@/lib/runner";
+import { registerCSharpIntelliSense } from "@/lib/intellisense";
 
 function activeFile(session: Session) {
   return session.files.find((f) => f.name === session.activeFile) ?? session.files[0];
@@ -54,6 +55,15 @@ function App() {
 
   const active = useMemo(() => activeFile(session), [session]);
 
+  // Kept current every render so the Monaco providers (registered once,
+  // below) never read stale state through their closures.
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const languageVersionRef = useRef(languageVersion);
+  languageVersionRef.current = languageVersion;
+  const intellisenseEnabledRef = useRef(intellisenseEnabled);
+  intellisenseEnabledRef.current = intellisenseEnabled;
+
   // Persist session + theme + language version.
   useEffect(() => saveSession(session), [session]);
   useEffect(() => {
@@ -73,6 +83,14 @@ function App() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    return registerCSharpIntelliSense({
+      getSession: () => sessionRef.current,
+      getLanguageVersion: () => languageVersionRef.current,
+      getEnabled: () => intellisenseEnabledRef.current,
+    });
   }, []);
 
   function updateFileContent(name: string, content: string) {
