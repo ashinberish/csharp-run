@@ -7,7 +7,9 @@ runner/wwwroot/refs.zip
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
-frontend/public/runner/
+
+# frontend/public/runner/ (the published runner/ WASM output) is
+# intentionally committed, not ignored — see "Deploying" in the README.
 
 # Editor / OS
 .vs/

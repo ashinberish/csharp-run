@@ -66,6 +66,19 @@ npm run preview   # serve the production build locally
 Re-run `npm run build:runner` any time `runner/` changes — the frontend doesn't rebuild it
 automatically.
 
+## Deploying
+
+`frontend/public/runner/` — the runner's published output — is committed to git rather than
+gitignored, specifically so the deploy build never needs the .NET SDK: `npm run build` alone
+(plain `tsc -b && vite build`) is enough, because Vite just copies `public/` into `dist/`
+verbatim. The tradeoff is that `frontend/public/runner/` needs to be regenerated and committed
+by hand (`npm run build:runner`, from a machine with the .NET SDK) any time `runner/` source
+changes — nothing rebuilds it automatically, on a push or otherwise.
+
+This repo includes a root [`vercel.json`](./vercel.json) that points Vercel at the `frontend/`
+subdirectory for install/build/output, so importing the GitHub repo into Vercel with default
+settings is enough — no dashboard configuration (no "Root Directory" override) needed.
+
 ## How it works
 
 - `runner/CSharpRunner.cs` is the whole compiler service: parses each open `.cs` file into a
