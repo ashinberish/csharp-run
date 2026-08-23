@@ -8,8 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { FileLanguage } from "@/lib/session";
-
-const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
+import { isMac } from "@/lib/shortcut";
 
 interface TopBarProps {
   running: boolean;

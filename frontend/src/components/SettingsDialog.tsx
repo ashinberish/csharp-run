@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Theme } from "@/lib/session";
+import type { Shortcut, Theme } from "@/lib/session";
+import { ShortcutRecorder } from "@/components/ShortcutRecorder";
 
 const LANGUAGE_VERSIONS = [
   { value: "CSharp10", label: "C# 10" },
@@ -33,6 +34,8 @@ interface SettingsDialogProps {
   onLanguageVersionChange: (version: string) => void;
   intellisenseEnabled: boolean;
   onIntellisenseChange: (enabled: boolean) => void;
+  formatShortcut: Shortcut;
+  onFormatShortcutChange: (shortcut: Shortcut) => void;
 }
 
 export function SettingsDialog({
@@ -44,6 +47,8 @@ export function SettingsDialog({
   onLanguageVersionChange,
   intellisenseEnabled,
   onIntellisenseChange,
+  formatShortcut,
+  onFormatShortcutChange,
 }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -98,6 +103,16 @@ export function SettingsDialog({
             </div>
             <Switch checked={intellisenseEnabled} onCheckedChange={onIntellisenseChange} />
           </label>
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-semibold">Format shortcut</span>
+              <span className="text-[11px] text-muted-foreground">
+                Formats the active C# file. Click, then press a new key combination.
+              </span>
+            </div>
+            <ShortcutRecorder value={formatShortcut} onChange={onFormatShortcutChange} />
+          </div>
         </div>
       </DialogContent>
     </Dialog>
