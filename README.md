@@ -26,6 +26,9 @@ Everything executes client-side. Your code never leaves the browser.
   (`SemanticModel`/`LookupSymbols`) rather than the full IDE completion engine — see
   [How it works](#how-it-works) for why. Cross-file (a class in another open `.cs` file shows up
   in completion without needing to have been run first). Toggle in Settings, off by default.
+- **Format on shortcut** — reformats the active C# file via Roslyn's `Formatter`, default
+  `Ctrl`/`Cmd`+`S` (browser save is suppressed). Rebindable in Settings: click the current
+  binding, then press a new key combination. Not in py-run.
 - **Dark / light theme**, synced with Monaco's own editor theme.
 - **Auto-saved session** — every file's content, plus which one was open, is saved to
   `localStorage` as you type and restored the next time you open the app.
@@ -111,6 +114,17 @@ settings is enough — no dashboard configuration (no "Root Directory" override)
   a full completion engine is built on, just without fuzzy matching, snippets, or import
   suggestions — real, accurate, scope-aware completion in well under a second instead.
   `frontend/src/lib/intellisense.ts` registers the corresponding Monaco providers.
+- `runner/CSharpFormatter.cs` — unlike completion, `Formatter.Format` is purely syntactic (a bare
+  `SyntaxTree` in, no compilation or references involved), so it doesn't carry the same risk;
+  measured ~800ms cold (mostly one-time `AdhocWorkspace` construction, cached) and well under
+  100ms warm. The shortcut itself isn't wired through Monaco's own keybinding system — it's a
+  `window` `keydown` listener matched against the user's configured `Shortcut`
+  (`frontend/src/lib/shortcut.ts`), the same pattern already used for Run's `Ctrl`/`Cmd`+`Enter`,
+  so a rebind takes effect immediately with no re-mount. The one sharp edge: the recorder that
+  captures a new binding (`frontend/src/components/ShortcutRecorder.tsx`) must call
+  `stopPropagation()`, not just `preventDefault()` — otherwise the keystroke used to *set* a
+  binding also bubbles to the app's global listener, which by then already matches it, firing the
+  action in the middle of recording it.
 
 ## License
 

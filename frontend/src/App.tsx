@@ -10,18 +10,22 @@ import { SettingsDialog } from "@/components/SettingsDialog";
 import {
   MAIN_FILE,
   languageForName,
+  loadFormatShortcut,
   loadLanguageVersion,
   loadSession,
   loadTheme,
+  saveFormatShortcut,
   saveLanguageVersion,
   saveSession,
   saveTheme,
   type FileLanguage,
   type Session,
+  type Shortcut,
   type Theme,
 } from "@/lib/session";
 import { loadRunner, type RunResponse } from "@/lib/runner";
 import { registerCSharpIntelliSense } from "@/lib/intellisense";
+import { matchesShortcut } from "@/lib/shortcut";
 
 function activeFile(session: Session) {
   return session.files.find((f) => f.name === session.activeFile) ?? session.files[0];
@@ -49,6 +53,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [cursor, setCursor] = useState({ line: 1, column: 1 });
   const [editorFraction, setEditorFraction] = useState(0.6);
+  const [formatShortcut, setFormatShortcutState] = useState<Shortcut>(() => loadFormatShortcut());
 
   const mainRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
@@ -71,6 +76,7 @@ function App() {
     saveTheme(theme);
   }, [theme]);
   useEffect(() => saveLanguageVersion(languageVersion), [languageVersion]);
+  useEffect(() => saveFormatShortcut(formatShortcut), [formatShortcut]);
 
   // Boot the WASM runner once.
   useEffect(() => {
@@ -199,18 +205,48 @@ function App() {
     setOutput((prev) => [...prev, ...lines]);
   }
 
+  async function handleFormat() {
+    if (running || !runtimeReady) return;
+    if (active.language !== "csharp") return;
+    const editor = editorRef.current;
+    const model = editor?.getModel();
+    if (!editor || !model) return;
+
+    try {
+      const runner = await loadRunner();
+      const response = await runner.format({ languageVersion, content: model.getValue() });
+      if (!response.success || response.formattedContent === undefined) {
+        setOutput((prev) => [...prev, { stream: "error", text: `Format failed: ${response.error}\n` }]);
+        return;
+      }
+      // executeEdits (not model.setValue) so the edit joins Monaco's normal
+      // undo stack instead of clearing it, and preserves the cursor/scroll
+      // position it can. The onChange this triggers keeps session state
+      // (and the "dirty" dot) in sync automatically.
+      editor.executeEdits("format", [{ range: model.getFullModelRange(), text: response.formattedContent }]);
+      setOutput((prev) => [...prev, { stream: "system", text: `Formatted ${active.name}.\n` }]);
+    } catch (err) {
+      setOutput((prev) => [...prev, { stream: "error", text: `${err}\n` }]);
+    }
+  }
+
   useEffect(() => {
     function handleKeydown(e: KeyboardEvent) {
       const runShortcut = (e.metaKey || e.ctrlKey) && e.key === "Enter";
       if (runShortcut) {
         e.preventDefault();
         void handleRun();
+        return;
+      }
+      if (matchesShortcut(e, formatShortcut)) {
+        e.preventDefault();
+        void handleFormat();
       }
     }
     window.addEventListener("keydown", handleKeydown);
     return () => window.removeEventListener("keydown", handleKeydown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, runtimeReady, session, languageVersion]);
+  }, [running, runtimeReady, session, languageVersion, formatShortcut, active]);
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
@@ -268,6 +304,8 @@ function App() {
         onLanguageVersionChange={setLanguageVersionState}
         intellisenseEnabled={intellisenseEnabled}
         onIntellisenseChange={setIntellisenseEnabled}
+        formatShortcut={formatShortcut}
+        onFormatShortcutChange={setFormatShortcutState}
       />
     </div>
   );

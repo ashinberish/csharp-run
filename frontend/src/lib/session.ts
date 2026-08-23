@@ -98,3 +98,34 @@ export function saveLanguageVersion(version: string): void {
     // best-effort
   }
 }
+
+export interface Shortcut {
+  mod: boolean; // Ctrl on Windows/Linux, Cmd on Mac — treated as one interchangeable modifier
+  shift: boolean;
+  alt: boolean;
+  key: string;
+}
+
+export const DEFAULT_FORMAT_SHORTCUT: Shortcut = { mod: true, shift: false, alt: false, key: "s" };
+
+const FORMAT_SHORTCUT_KEY = "csharp-run:formatShortcut";
+
+export function loadFormatShortcut(): Shortcut {
+  try {
+    const raw = localStorage.getItem(FORMAT_SHORTCUT_KEY);
+    if (!raw) return DEFAULT_FORMAT_SHORTCUT;
+    const parsed = JSON.parse(raw) as Partial<Shortcut>;
+    if (typeof parsed.key !== "string") return DEFAULT_FORMAT_SHORTCUT;
+    return { mod: !!parsed.mod, shift: !!parsed.shift, alt: !!parsed.alt, key: parsed.key };
+  } catch {
+    return DEFAULT_FORMAT_SHORTCUT;
+  }
+}
+
+export function saveFormatShortcut(shortcut: Shortcut): void {
+  try {
+    localStorage.setItem(FORMAT_SHORTCUT_KEY, JSON.stringify(shortcut));
+  } catch {
+    // best-effort
+  }
+}

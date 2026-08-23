@@ -65,6 +65,17 @@ export interface SignatureHelpResponse {
   activeParameter: number;
 }
 
+export interface FormatRequest {
+  languageVersion: string;
+  content: string;
+}
+
+export interface FormatResponse {
+  success: boolean;
+  formattedContent?: string;
+  error?: string;
+}
+
 interface CSharpRunnerExports {
   CsharpRun: {
     CSharpRunner: {
@@ -75,6 +86,9 @@ interface CSharpRunnerExports {
       GetHover(requestJson: string): Promise<string>;
       GetSignatureHelp(requestJson: string): Promise<string>;
     };
+    CSharpFormatter: {
+      Format(requestJson: string): string;
+    };
   };
 }
 
@@ -83,6 +97,7 @@ export interface Runner {
   getCompletions(request: IntelliSenseRequest): Promise<CompletionResponse>;
   getHover(request: IntelliSenseRequest): Promise<HoverResponse>;
   getSignatureHelp(request: IntelliSenseRequest): Promise<SignatureHelpResponse>;
+  format(request: FormatRequest): Promise<FormatResponse>;
 }
 
 declare global {
@@ -160,6 +175,10 @@ function makeRunner(): Runner {
     async getSignatureHelp(request: IntelliSenseRequest) {
       const json = await getExports().CsharpRun.CSharpIntelliSense.GetSignatureHelp(JSON.stringify(request));
       return JSON.parse(json) as SignatureHelpResponse;
+    },
+    async format(request: FormatRequest) {
+      const json = getExports().CsharpRun.CSharpFormatter.Format(JSON.stringify(request));
+      return JSON.parse(json) as FormatResponse;
     },
   };
 }
