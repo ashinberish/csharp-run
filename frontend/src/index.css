@@ -109,6 +109,9 @@
   --color-hover-bg: var(--hover-bg);
   --color-hover-border: var(--hover-border);
   --color-control-bg: var(--control-bg);
+  --color-switch-knob: var(--switch-knob);
+  --color-divider-hover: var(--divider-hover);
+  --color-overlay-hover: var(--overlay-hover);
 
   --font-mono: var(--mono);
   --font-sans: var(--ui);
